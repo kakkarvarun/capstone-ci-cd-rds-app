@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:15
+    container_name: capstone-db
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: SuperSecureP@ssw0rd123
+      POSTGRES_DB: userdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  web:
+    build: .
+    container_name: capstone-web
+    env_file:
+      - .env
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+
+volumes:
+  db_data:

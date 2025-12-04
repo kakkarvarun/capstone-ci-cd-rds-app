@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>User Management Dashboard</title>
+</head>
+<body>
+  <h1>User Management API</h1>
+
+  <h2>Health</h2>
+  <p>Status: <span id="health">Checking...</span></p>
+
+  <h2>Create User</h2>
+  <form id="user-form">
+    <input type="text" id="first_name" placeholder="First name" required />
+    <input type="text" id="last_name" placeholder="Last name" required />
+    <input type="email" id="email" placeholder="Email" />
+    <button type="submit">Create</button>
+  </form>
+
+  <h2>Users</h2>
+  <ul id="user-list"></ul>
+
+  <script>
+    async function loadHealth() {
+      try {
+        const resp = await fetch("/health");
+        const data = await resp.json();
+        document.getElementById("health").innerText = data.status;
+      } catch (e) {
+        document.getElementById("health").innerText = "error";
+      }
+    }
+
+    async function loadUsers() {
+      const resp = await fetch("/users");
+      const users = await resp.json();
+      const list = document.getElementById("user-list");
+      list.innerHTML = "";
+      users.forEach(u => {
+        const li = document.createElement("li");
+        li.innerText = `${u.id}: ${u.first_name} ${u.last_name} (${u.email || "no email"})`;
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById("user-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const first_name = document.getElementById("first_name").value;
+      const last_name = document.getElementById("last_name").value;
+      const email = document.getElementById("email").value;
+      await fetch("/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ first_name, last_name, email })
+      });
+      document.getElementById("first_name").value = "";
+      document.getElementById("last_name").value = "";
+      document.getElementById("email").value = "";
+      loadUsers();
+    });
+
+    loadHealth();
+    loadUsers();
+  </script>
+</body>
+</html>
