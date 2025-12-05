@@ -4,5 +4,14 @@ __pycache__/
 venv/
 .venv/
 db_data/
+
+# Terraform files and folders
 terraform.tfstate*
 .terraform/
+*/.terraform.lock.hcl
+**/.terraform/*
+*.tfstate
+*.tfvars
+*.tfplan
+crash.log
+
