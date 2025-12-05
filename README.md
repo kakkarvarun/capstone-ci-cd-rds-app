@@ -1,6 +1,3 @@
-I can see the issue - your heading levels are inconsistent and some sections are using `#` when they should use `##` or `###`. Here's the corrected version:
-
-```markdown
 # Capstone CI/CD RDS Application
 
 Complete DevOps Pipeline: GitHub Actions → Terraform → AWS ECS/ECR/RDS → CloudWatch
