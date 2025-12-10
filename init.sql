@@ -1,6 +1,10 @@
--- Postgres already creates the database defined by POSTGRES_DB=userdb
--- so we only need to create the table inside that DB.
+-- -------------------------------------------------------
+-- init.sql
+-- This script initializes the required schema for RDS
+-- and local Postgres (docker-compose).
+-- -------------------------------------------------------
 
+-- Ensure the 'users' table exists.
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     first_name VARCHAR(50) NOT NULL,

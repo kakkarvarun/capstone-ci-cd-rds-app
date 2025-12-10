@@ -4,6 +4,7 @@ from flask import Flask, jsonify, request, render_template
 
 app = Flask(__name__)
 
+
 def get_db_connection():
     conn = psycopg2.connect(
         host=os.getenv("DB_HOST", "db"),
@@ -13,7 +14,9 @@ def get_db_connection():
     )
     return conn
 
+
 def init_db():
+    """Create the users table if it does not exist."""
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
@@ -30,9 +33,24 @@ def init_db():
     cur.close()
     conn.close()
 
+
+@app.before_first_request
+def setup_db():
+    """
+    This runs once per app instance (per container) before the first request.
+    In ECS this ensures the users table exists in RDS so /users won't 500.
+    """
+    try:
+        init_db()
+    except Exception as e:
+        # Log the error – you’ll see this in CloudWatch if something goes wrong
+        app.logger.error("Failed to initialize database: %s", e)
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/health", methods=["GET"])
 def health():
@@ -47,6 +65,7 @@ def health():
     except Exception as e:
         return jsonify({"status": "unhealthy", "error": str(e)}), 500
 
+
 @app.route("/users", methods=["GET"])
 def list_users():
     conn = get_db_connection()
@@ -60,6 +79,7 @@ def list_users():
         for r in rows
     ]
     return jsonify(users)
+
 
 @app.route("/users/<int:user_id>", methods=["GET"])
 def get_user(user_id):
@@ -76,6 +96,7 @@ def get_user(user_id):
         return jsonify({"error": "User not found"}), 404
     user = {"id": row[0], "first_name": row[1], "last_name": row[2], "email": row[3]}
     return jsonify(user)
+
 
 @app.route("/users", methods=["POST"])
 def create_user():
@@ -102,9 +123,16 @@ def create_user():
     cur.close()
     conn.close()
     return jsonify(
-        {"id": user_id, "first_name": first_name, "last_name": last_name, "email": email}
+        {
+            "id": user_id,
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+        }
     ), 201
 
+
 if __name__ == "__main__":
+    # For local runs: make sure table exists before starting Flask dev server
     init_db()
     app.run(host="0.0.0.0", port=5000)
