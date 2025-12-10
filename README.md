@@ -18,6 +18,12 @@ This repository demonstrates end-to-end automation from code → test → scan �
 
 ---
 
+## 🖼 Architecture Diagram
+
+![Application Architecture](images/diagram.png)
+
+---
+
 ## 🚀 Target Architecture
 
 ```mermaid
