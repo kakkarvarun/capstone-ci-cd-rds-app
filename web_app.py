@@ -34,19 +34,6 @@ def init_db():
     conn.close()
 
 
-@app.before_first_request
-def setup_db():
-    """
-    This runs once per app instance (per container) before the first request.
-    In ECS this ensures the users table exists in RDS so /users won't 500.
-    """
-    try:
-        init_db()
-    except Exception as e:
-        # Log the error – you’ll see this in CloudWatch if something goes wrong
-        app.logger.error("Failed to initialize database: %s", e)
-
-
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -130,6 +117,16 @@ def create_user():
             "email": email,
         }
     ), 201
+
+
+# ---- Auto-init hook for ECS / production (but SAFE for tests) ----
+# This runs at import time ONLY if the env var is set.
+if os.getenv("INIT_DB_ON_STARTUP") == "true":
+    try:
+        init_db()
+    except Exception as e:
+        # You will see this in CloudWatch if something goes wrong in ECS
+        app.logger.error("Failed to initialize database on startup: %s", e)
 
 
 if __name__ == "__main__":
