@@ -61,7 +61,8 @@ resource "aws_ecs_task_definition" "app" {
         { name = "DB_HOST",     value = aws_db_instance.userdb.address },
         { name = "DB_NAME",     value = aws_db_instance.userdb.db_name },
         { name = "DB_USER",     value = aws_db_instance.userdb.username },
-        { name = "DB_PASSWORD", value = aws_db_instance.userdb.password }
+        { name = "DB_PASSWORD", value = aws_db_instance.userdb.password },
+        { name  = "INIT_DB_ON_STARTUP", value = "true" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
