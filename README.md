@@ -205,3 +205,132 @@ http://localhost:5000
 ```
 
 "Demo change for CI"
+
+
+## 🚧 Challenges Faced & How We Overcame Them
+
+### 1. Database Initialization Failure (Internal Server Error at /users)
+
+**Challenge:**
+When accessing `/users`, the application returned `500 Internal Server Error`. Logs showed:
+```
+psycopg2.errors.UndefinedTable: relation "users" does not exist.
+```
+
+**Cause:**
+The RDS database did not automatically create the `users` table after deployment.
+
+**Solution:**
+- Implemented database auto-initialization using an environment-controlled hook in `web_app.py`.
+- Created a consistent `init.sql` to ensure the schema exists in both local Docker and AWS RDS.
+- Added `INIT_DB_ON_STARTUP=true` in ECS to run `init_db()` on container startup.
+
+**Outcome:**
+Application now boots with the required table already created, preventing runtime database errors.
+
+---
+
+### 2. Flask 3.x Deprecation: before_first_request Removed
+
+**Challenge:**
+Tests failed in CI pipeline with:
+```
+AttributeError: 'Flask' object has no attribute 'before_first_request'.
+```
+
+**Cause:**
+Flask 3.x removed the `before_first_request` decorator that previous versions used for boot-time initialization.
+
+**Solution:**
+- Removed the deprecated decorator.
+- Replaced with a safer import-time initialization triggered via environment variable (`INIT_DB_ON_STARTUP`).
+- Ensured test suite imports do not initialize external resources.
+
+**Outcome:**
+CI tests run without errors, and production still initializes the DB correctly.
+
+---
+
+### 3. CI/CD Pipeline Deployment Issues
+
+**Challenge:**
+Pipeline initially failed due to incorrect workflow syntax and missing Terraform environment variables.
+
+**Cause:**
+The deployment workflow lacked proper ECR login, Terraform variable passing, and had a broken structure.
+
+**Solution:**
+- Rewrote the entire `ci-cd.yml` pipeline to:
+  - Add proper ECR authentication
+  - Configure Terraform with dynamic `TF_VAR_image_tag`
+  - Split stages into Source/Test → Security Scan → Deploy
+- Validated with GitHub Actions and Terraform.
+
+**Outcome:**
+The pipeline now builds, tests, scans, deploys infrastructure and updates ECS automatically on every main merge.
+
+---
+
+### 4. Destroying Infrastructure Manually
+
+**Challenge:**
+Initially, AWS resources (VPC, RDS, ALB, ECS, ECR, IAM) had to be destroyed manually.
+
+**Cause:**
+No automated teardown existed, which slowed down iteration.
+
+**Solution:**
+- Introduced a dedicated `destroy.yml` workflow triggered manually via GitHub UI.
+- Added confirmation step (type "destroy") to avoid accidental deletions.
+
+**Outcome:**
+Infrastructure can now be safely torn down with a single GitHub Action.
+
+---
+
+### 5. Difficulty Running SQL Commands from AWS RDS Console
+
+**Challenge:**
+AWS Console showed "No databases that support query editor" for RDS.
+
+**Cause:**
+The Query Editor only works for Aurora Serverless, not for standard PostgreSQL instances.
+
+**Solution:**
+- Connected using EC2 Bastion → `psql` or used local `psql` via SSH tunnel.
+- Validated tables and ensured schema creation.
+
+**Outcome:**
+Reliable access to RDS for debugging and validation.
+
+---
+
+### 6. ECS Task Failing Due to Wrong Environment Variables
+
+**Challenge:**
+Containers failed health checks and crashed due to missing environment variables required to connect to RDS.
+
+**Cause:**
+Terraform ECS task definition did not pass DB credentials into the container.
+
+**Solution:**
+- Added sensitive variables via Terraform → ECS task definition.
+- Defined environment variables: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `INIT_DB_ON_STARTUP`.
+
+**Outcome:**
+Containers now connect to RDS successfully and remain healthy.
+
+---
+
+### 7. Delayed RDS Spin-Up Causing Early Application Failures
+
+**Challenge:**
+RDS instances take multiple minutes to initialize, causing ECS tasks to fail during early attempts.
+
+**Solution:**
+- Implemented database retry logic through Flask health checks.
+- Ensured application gracefully handles temporary DB unavailability.
+- Added Auto-Init only on successful DB connection.
+
+**Outcome:**
+Deployment stabilizes even when database initialization is slow.
